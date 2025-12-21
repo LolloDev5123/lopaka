@@ -1,4 +1,4 @@
-import {reactive, UnwrapRef} from 'vue';
+import {reactive, UnwrapRef, watch} from 'vue';
 import {TPlatformFeatures} from 'src/platforms/platform';
 import {getFont, loadFont} from '../draw/fonts';
 import {VirtualScreen} from '../draw/virtual-screen';
@@ -12,6 +12,7 @@ import {EllipseLayer} from './layers/ellipse.layer';
 import {IconLayer} from './layers/icon.layer';
 import {LineLayer} from './layers/line.layer';
 import {PaintLayer} from './layers/paint.layer';
+import {GroupLayer} from './layers/group.layer';
 import {RectangleLayer} from './layers/rectangle.layer';
 import {TextLayer} from './layers/text.layer';
 import platforms from './platforms';
@@ -38,6 +39,15 @@ type TSessionState = {
     isPublic: boolean;
     customFonts: TPlatformFont[];
     warnings: string[];
+    screens: TSessionScreen[];
+    activeScreenId: number;
+};
+
+export type TSessionScreen = {
+    id: number;
+    name: string;
+    layers: AbstractLayer[];
+    preview: string;
 };
 
 export class Session {
@@ -53,6 +63,7 @@ export class Session {
         ellipse: EllipseLayer,
         // TODO: deprecated, use PaintLayer instead
         icon: IconLayer,
+        group: GroupLayer,
     };
 
     id: string = generateUID();
@@ -72,6 +83,8 @@ export class Session {
         isPublic: false,
         customFonts: [],
         warnings: [],
+        screens: [],
+        activeScreenId: 1,
     });
 
     history: ChangeHistory = useHistory();
@@ -146,6 +159,64 @@ export class Session {
         }
         this.virtualScreen.redraw();
     };
+    
+    // Screens
+    
+    public addScreen(name: string = 'New Screen') {
+        const id = this.state.screens.length + 1;
+        this.state.screens.push({
+            id,
+            name,
+            layers: [],
+            preview: ''
+        });
+        this.setActiveScreen(id);
+    }
+    
+    public setActiveScreen(id: number) {
+        // save current layers to active screen
+        const currentScreen = this.state.screens.find(s => s.id === this.state.activeScreenId);
+        if (currentScreen) {
+            currentScreen.layers = this.state.layers;
+            this.updateScreenPreview(currentScreen);
+        }
+        
+        // load new screen
+        const nextScreen = this.state.screens.find(s => s.id === id);
+        if (nextScreen) {
+            this.state.activeScreenId = nextScreen.id;
+            this.state.layers = nextScreen.layers;
+            this.virtualScreen.redraw();
+        }
+    }
+    
+    public updateScreenPreview(screen: TSessionScreen) {
+        const canvas = new OffscreenCanvas(this.state.display.x, this.state.display.y);
+        const ctx = canvas.getContext('2d');
+        // draw layers
+        // We need to use the platform specific draw logic or just simplified composition?
+        // Let's us simplified composition for preview
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        screen.layers.slice().sort((a, b) => a.index - b.index).forEach(layer => {
+            if (layer.visible) {
+                 // assume layer buffer is up to date?
+                 // If layer was not active, its buffer might be empty?
+                 // No, buffer is persistent in AbstractLayer.
+                 ctx.drawImage(layer.getBuffer(), 0, 0);
+            }
+        });
+        
+        canvas.convertToBlob().then(blob => {
+             const reader = new FileReader();
+             reader.onload = () => {
+                 screen.preview = reader.result as string;
+             };
+             reader.readAsDataURL(blob);
+        });
+    }
+    
     unlockLayer = (layer: AbstractLayer, saveHistory: boolean = true) => {
         layer.locked = false;
         if (saveHistory) {
@@ -400,6 +471,18 @@ export class Session {
                     break;
             }
         });
+
+        // Sync layers to active screen
+        watch(
+            () => this.state.layers,
+            (newLayers) => {
+                const active = this.state.screens.find((s) => s.id === this.state.activeScreenId);
+                if (active) {
+                    active.layers = newLayers;
+                    this.updateScreenPreview(active);
+                }
+            }
+        );
     }
 }
 

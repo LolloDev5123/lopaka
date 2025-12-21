@@ -156,6 +156,9 @@ export class VirtualScreen {
                     overlays.push(layer);
                     return;
                 }
+                if (!layer.visible) {
+                    return;
+                }
                 if (layer.inverted) {
                     this.ctx.globalCompositeOperation = 'difference';
                 }

@@ -7,6 +7,8 @@ import {IconLayer} from '../../core/layers/icon.layer';
 import VueDraggable from 'vuedraggable';
 import Icon from '/src/components/layout/Icon.vue';
 import {PaintLayer} from '/src/core/layers/paint.layer';
+import FuiContextMenu, {ContextMenuAction} from './FuiContextMenu.vue';
+import FuiLayerItem from './FuiLayerItem.vue';
 
 const props = defineProps<{
     readonly?: boolean;
@@ -14,6 +16,12 @@ const props = defineProps<{
 
 const session = useSession();
 const drag = ref(false);
+
+// Context Menu State
+const contextMenuVisible = ref(false);
+const contextMenuX = ref(0);
+const contextMenuY = ref(0);
+const contextMenuActions = ref<ContextMenuAction[]>([]);
 
 const disabled = computed(
     () =>
@@ -33,13 +41,6 @@ const layers = computed({
     },
 });
 
-function classNames(layer) {
-    return {
-        'bg-base-300': layer.selected,
-        'text-gray-500': layer.overlay,
-    };
-}
-
 function setActive(layer: UnwrapRef<AbstractLayer>) {
     session.state.layers.forEach((l) => (l.selected = false));
     layer.selected = true;
@@ -47,68 +48,90 @@ function setActive(layer: UnwrapRef<AbstractLayer>) {
     session.virtualScreen.redraw();
 }
 
-function getLayerListItem(layer: UnwrapRef<AbstractLayer>) {
-    if (layer instanceof TextLayer) {
-        return `${layer.text || 'Empty text'}`;
-    } else if (layer instanceof IconLayer) {
-        return `${layer.name}`;
-    }
-    return `${layer.name}`;
+function toggleVisibility(layer: UnwrapRef<AbstractLayer>) {
+    layer.visible = !layer.visible;
+    session.virtualScreen.redraw();
 }
+
+function handleContextMenu({event, layer}: {event: MouseEvent, layer: UnwrapRef<AbstractLayer>}) {
+    if (disabled.value) return;
+    
+    event.preventDefault();
+    contextMenuX.value = event.clientX;
+    contextMenuY.value = event.clientY;
+    
+    contextMenuActions.value = [
+        {
+            label: layer.locked ? 'Unlock' : 'Lock',
+            icon: layer.locked ? 'lock-open' : 'lock-closed',
+            action: () => {
+                if (layer.locked) session.unlockLayer(layer as any);
+                else session.lockLayer(layer as any);
+            }
+        },
+        {
+            label: layer.visible ? 'Hide' : 'Show',
+            icon: layer.visible ? 'eye-off' : 'eye',
+            action: () => toggleVisibility(layer)
+        },
+        {
+            label: 'Duplicate',
+            icon: 'clone',
+            action: () => {
+                const clone = layer.clone();
+                // move slightly
+                clone.bounds.x += 10;
+                clone.bounds.y += 10;
+                clone.name = `${layer.name} copy`;
+                session.addLayer(clone);
+                session.virtualScreen.redraw();
+            }
+        },
+        {
+            label: 'Delete',
+            icon: 'trash',
+            class: 'text-error',
+            action: () => session.removeLayer(layer as any)
+        }
+    ];
+    
+    contextMenuVisible.value = true;
+}
+
 </script>
 <template>
-    <ul class="menu menu-xs w-[150px] p-0">
+    <ul class="menu menu-xs w-[250px] p-0"> <!-- increased width for nested items -->
         <VueDraggable
             class="layers-list max-w-full"
             v-model="layers"
-            item-key="id"
+            item-key="uid"
+            group="layers"
             @start="drag = true"
             @end="drag = false"
             :disabled="readonly || disabled"
         >
             <template #item="{element}">
-                <li
-                    class="layer"
-                    @click="!disabled && setActive(element)"
-                    v-show="element.type !== 'paint' || (element.type === 'paint' && (element as PaintLayer).data)"
-                >
-                    <a
-                        class="flex h-6 max-w-full pl-1 mb-[1px] rounded-none"
-                        :class="classNames(element)"
-                    >
-                        <Icon
-                            :type="element.type"
-                            sm
-                            class="text-gray-500 min-w-4"
-                        ></Icon>
-                        <div class="truncate grow">
-                            <span>{{ getLayerListItem(element) }}</span>
-                        </div>
-                        <div
-                            v-if="!readonly && element.locked"
-                            class="btn btn-xs btn-square btn-ghost layer-actions -mr-2"
-                            @click.stop="!disabled && session.unlockLayer(element as any)"
-                        >
-                            <Icon
-                                type="lock-closed"
-                                xs
-                            />
-                        </div>
-                        <div
-                            v-if="!readonly && !element.locked"
-                            class="btn btn-xs btn-square btn-ghost hidden layer-actions -mr-2"
-                            @click.stop="!disabled && session.lockLayer(element as any)"
-                        >
-                            <Icon
-                                type="lock-open"
-                                xs
-                            />
-                        </div>
-                    </a>
-                </li>
+                <FuiLayerItem
+                    :element="element"
+                    :disabled="disabled"
+                    :readonly="readonly"
+                    @activate="setActive"
+                    @toggleVisibility="toggleVisibility"
+                    @contextMenu="handleContextMenu"
+                    @toggleLock="session.lockLayer(element as any)"
+                    @unlock="session.unlockLayer(element as any)"
+                />
             </template>
         </VueDraggable>
     </ul>
+    
+    <FuiContextMenu
+        v-if="contextMenuVisible"
+        :actions="contextMenuActions"
+        :x="contextMenuX"
+        :y="contextMenuY"
+        @close="contextMenuVisible = false"
+    />
 </template>
 <style lang="css" scoped>
 .sortable-chosen {
