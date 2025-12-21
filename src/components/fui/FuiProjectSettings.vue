@@ -29,15 +29,18 @@ const platforms = computed(() => Object.keys(session.platforms));
 // Live preview - apply changes immediately
 watch([localWidth, localHeight], ([newWidth, newHeight]) => {
     session.setDisplay(new Point(newWidth, newHeight), true);
+    session.virtualScreen.redraw();
 }, {immediate: false});
 
 watch([localPixelX, localPixelY], ([newX, newY]) => {
     session.state.pixelSize.x = newX;
     session.state.pixelSize.y = newY;
+    session.virtualScreen.redraw();
 }, {immediate: false});
 
 watch(localPlatform, (newPlatform) => {
     session.state.platform = newPlatform;
+    session.virtualScreen.redraw();
 }, {immediate: false});
 
 function applySettings() {

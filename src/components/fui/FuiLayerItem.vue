@@ -71,39 +71,44 @@ function classNames(layer) {
         v-show="element.type !== 'paint' || (element.type === 'paint' && (element as PaintLayer).data)"
     >
         <a
-            class="flex h-6 max-w-full pl-1 mb-[1px] rounded-none group items-center"
-            :class="classNames(element)"
-            :style="{paddingLeft: isGroup ? '0px' : ''}"
+            class="flex h-8 max-w-full pl-2 py-1 mb-0.5 rounded group items-center hover:bg-base-300/50 transition-colors"
+            :class="{
+                'bg-primary/20 border-l-2 border-primary': element.selected,
+                'text-gray-500': element.overlay,
+                'opacity-60': !element.visible,
+            }"
+            :style="{paddingLeft: isGroup ? '8px' : ''}"
         >
             <!-- Visibility Toggle -->
             <div 
-                class="mr-1 cursor-pointer hover:text-base-content" 
-                :class="element.visible ? 'text-gray-400' : 'text-gray-600'"
+                class="mr-2 cursor-pointer hover:text-base-content transition-colors opacity-0 group-hover:opacity-100" 
+                :class="element.visible ? 'text-gray-400 opacity-100' : 'text-gray-600'"
                 @click.stop="emit('toggleVisibility', element)"
             >
                 <Icon
                     :type="element.visible ? 'eye' : 'eye-off'"
-                    xs
+                    sm
                 />
             </div>
 
             <!-- Group arrow -->
             <div 
                  v-if="isGroup"
-                 class="mr-1 cursor-pointer"
+                 class="mr-2 cursor-pointer hover:text-primary transition-colors"
                  @click.stop="onToggleOpen"
             >
                 <Icon 
                     :type="(element as GroupLayer).expanded ? 'chevron-down' : 'chevron-right'" 
-                    xs 
+                    sm 
                 />
             </div>
             
-            <!-- Icon -->
+            <!-- Icon with better styling -->
             <Icon
                 :type="isGroup ? 'folder' : element.type"
                 sm
-                class="text-gray-500 min-w-4 mr-1"
+                class="min-w-5 mr-2"
+                :class="isGroup ? 'text-yellow-500' : 'text-blue-400'"
             ></Icon>
             
             <div class="truncate grow min-w-0 flex items-center overflow-hidden" @dblclick.stop="!readonly && !disabled && emit('startRenaming', element.uid)">

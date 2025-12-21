@@ -178,13 +178,6 @@ function setWarnings(warnings) {
         <div>
             <slot name="title"></slot>
             <div
-                class="flex flex-row text-sm mb-2 justify-center"
-                v-if="!auth && !readonly"
-            >
-                <FuiSelectPlatform></FuiSelectPlatform>
-                <FuiSelectDisplay></FuiSelectDisplay>
-            </div>
-            <div
                 class="font-sans flex flex-row gap-4 justify-between"
                 v-if="isScreenLoaded && !isScreenNotFound"
             >
