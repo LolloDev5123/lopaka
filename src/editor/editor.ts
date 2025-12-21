@@ -128,7 +128,10 @@ export class Editor {
                 offsetY = (event as MouseEvent).offsetY;
             }
             const screenPoint = new Point(offsetX, offsetY).clone();
-            const point = screenPoint.clone().divide(scale).floor(); //.boundTo(new Rect(new Point(), display));
+            const point = screenPoint
+                .clone()
+                .divide(scale.clone().multiply(state.pixelSize))
+                .floor(); //.boundTo(new Rect(new Point(), display));
             let alienEvent: boolean = false;
 
             switch (event.type) {

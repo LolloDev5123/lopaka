@@ -7,18 +7,18 @@ const props = defineProps<{
 }>();
 
 const gridSize = computed(() => {
-    return `${scale.value.x}px ${scale.value.y}px`;
+    return `${scale.value.x * pixelSize.value.x}px ${scale.value.y * pixelSize.value.y}px`;
 });
 
 const gridDisplay = computed(() => {
-    return scale.value.x >= 3 ? 'block' : 'none';
+    return scale.value.x * pixelSize.value.x >= 3 ? 'block' : 'none';
 });
 
 const screen = ref(null);
 const container = ref(null);
 const session = useSession();
 const {editor, virtualScreen, state} = session;
-const {display, scale, lock} = toRefs(state);
+const {display, scale, pixelSize, lock} = toRefs(state);
 const {activeTool} = toRefs(editor.state);
 
 onMounted(() => {
@@ -82,8 +82,8 @@ const canvasClassNames = computed(() => {
                     :width="display.x"
                     :height="display.y"
                     :style="{
-                        width: display.x * scale.x + 'px',
-                        height: display.y * scale.y + 'px',
+                        width: display.x * scale.x * pixelSize.x + 'px',
+                        height: display.y * scale.y * pixelSize.y + 'px',
                         backgroundColor: session.getPlatformFeatures().screenBgColor,
                     }"
                 />

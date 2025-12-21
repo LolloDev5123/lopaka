@@ -32,6 +32,7 @@ type TSessionState = {
     isDisplayCustom: boolean;
     layers: AbstractLayer[];
     scale: Point;
+    pixelSize: Point;
     lock: boolean;
     customImages: TLayerImageData[];
     isPublic: boolean;
@@ -65,6 +66,7 @@ export class Session {
         customDisplay: new Point(128, 64),
         layers: [],
         scale: new Point(4, 4),
+        pixelSize: new Point(1, 1),
         customImages: [],
         icons: iconsList,
         isPublic: false,
@@ -229,6 +231,11 @@ export class Session {
         this.state.scale = new Point(scale / 100, scale / 100);
         localStorage.setItem('lopaka_scale', `${scale}`);
         isLogged && logEvent('select_scale', scale);
+    };
+    setPixelSize = (pixelSize: Point, isLogged?: boolean) => {
+        this.state.pixelSize = pixelSize;
+        localStorage.setItem('lopaka_pixel_size', JSON.stringify(pixelSize.pack()));
+        isLogged && logEvent('select_pixel_size', pixelSize.toString());
     };
     preparePlatform = async (name: string, isLogged?: boolean, layers?): Promise<void> => {
         const fonts = this.platforms[name].getFonts();
@@ -492,6 +499,8 @@ export function useSession(id?: string) {
     const session = new Session();
     const scaleLocal = JSON.parse(localStorage.getItem('lopaka_scale') ?? '300');
     session.setScale(scaleLocal);
+    const pixelSizeLocal = JSON.parse(localStorage.getItem('lopaka_pixel_size') ?? '[1,1]');
+    session.setPixelSize(Point.unpack(pixelSizeLocal));
     sessions.set(session.id, session);
     currentSessionId = session.id;
     return session;

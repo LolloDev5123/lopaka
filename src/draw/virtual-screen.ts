@@ -62,7 +62,7 @@ export class VirtualScreen {
             watch([platform], () => {
                 this.redraw(false);
             });
-            watch([scale, display], () => {
+            watch([scale, display, session.state.pixelSize], () => {
                 this.resize();
                 this.redraw(false);
             });
@@ -113,12 +113,12 @@ export class VirtualScreen {
     }
 
     getLayersInPoint(position: Point): AbstractLayer[] {
-        const point = position.clone().divide(this.session.state.scale).round();
+        const point = position.clone().divide(this.session.state.scale).divide(this.session.state.pixelSize).round();
         return this.session.state.layers.filter((layer) => layer.contains(point)).sort((a, b) => b.index - a.index);
     }
 
     public resize() {
-        const {display, scale, layers} = this.session.state;
+        const {display, scale, layers, pixelSize} = this.session.state;
         const size = display.clone();
         this.screen.width = size.x;
         this.screen.height = size.y;
@@ -126,16 +126,16 @@ export class VirtualScreen {
             this.canvas.width = size.x;
             this.canvas.height = size.y;
             Object.assign(this.canvas.style, {
-                width: `${size.x * scale.x}px`,
-                height: `${size.y * scale.y}px`,
+                width: `${size.x * scale.x * pixelSize.x}px`,
+                height: `${size.y * scale.y * pixelSize.y}px`,
             });
         }
         if (this.pluginLayer) {
-            this.pluginLayer.width = (size.x * scale.x + DrawPlugin.offset.x * 2) * 2;
-            this.pluginLayer.height = (size.y * scale.y + DrawPlugin.offset.y * 2) * 2;
+            this.pluginLayer.width = (size.x * scale.x * pixelSize.x + DrawPlugin.offset.x * 2) * 2;
+            this.pluginLayer.height = (size.y * scale.y * pixelSize.y + DrawPlugin.offset.y * 2) * 2;
             Object.assign(this.pluginLayer.style, {
-                width: `${size.x * scale.x + DrawPlugin.offset.x * 2}px`,
-                height: `${size.y * scale.y + DrawPlugin.offset.y * 2}px`,
+                width: `${size.x * scale.x * pixelSize.x + DrawPlugin.offset.x * 2}px`,
+                height: `${size.y * scale.y * pixelSize.y + DrawPlugin.offset.y * 2}px`,
             });
         }
         layers.forEach((layer: AbstractLayer) => {
