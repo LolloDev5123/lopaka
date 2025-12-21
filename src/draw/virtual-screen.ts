@@ -7,6 +7,7 @@ import {SmartRulerPlugin} from './plugins/smart-ruler.plugin';
 import {HighlightPlugin} from './plugins/highlight.plugin';
 import {PointerPlugin} from './plugins/pointer.plugin';
 import {AbstractLayer} from '../core/layers/abstract.layer';
+import {GroupLayer} from '../core/layers/group.layer';
 import {ResizeIconsPlugin} from './plugins/resize-icons.plugin';
 import {PaintHighlightPlugin} from './plugins/paint-highlight.plugin';
 
@@ -148,15 +149,35 @@ export class VirtualScreen {
         if (!this.canvas) return;
         this.clear();
         const overlays = [];
-        this.session.state.layers
-            .sort((a, b) => a.index - b.index)
-            .forEach((layer) => {
+        // Recursively collect all visible layers, respecting group visibility hierarchy
+        const collectVisibleLayers = (layers: AbstractLayer[], parentVisible: boolean = true): AbstractLayer[] => {
+            const result: AbstractLayer[] = [];
+            for (const layer of layers) {
+                // Check if this layer inherits visibility from parent
+                const isVisible = parentVisible && layer.visible;
+                
+                if (layer instanceof GroupLayer) {
+                    // Don't draw groups themselves, but collect their children
+                    // Pass group's visibility down to children
+                    if (layer.children) {
+                        result.push(...collectVisibleLayers(layer.children, isVisible));
+                    }
+                } else {
+                    // Only add non-group layers that are visible
+                    if (isVisible) {
+                        result.push(layer);
+                    }
+                }
+            }
+            return result;
+        };
+        
+        const allLayers = collectVisibleLayers(this.session.state.layers).sort((a, b) => a.index - b.index);
+        
+        allLayers.forEach((layer) => {
                 // skip all oberlays
                 if (layer.modifiers.overlay && layer.modifiers.overlay.getValue()) {
                     overlays.push(layer);
-                    return;
-                }
-                if (!layer.visible) {
                     return;
                 }
                 if (layer.inverted) {

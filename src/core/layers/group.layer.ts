@@ -62,9 +62,40 @@ export class GroupLayer extends AbstractLayer {
         this.mode = EditMode.NONE;
     }
 
+    /**
+     * Override setVisible to propagate to all children
+     */
+    setVisible(visible: boolean) {
+        this.visible = visible;
+        this.children.forEach(child => {
+            if (child instanceof GroupLayer) {
+                child.setVisible(visible);
+            } else {
+                child.visible = visible;
+            }
+        });
+    }
+
+    /**
+     * Override setLocked to propagate to all children
+     */
+    setLocked(locked: boolean) {
+        this.locked = locked;
+        this.children.forEach(child => {
+            if (child instanceof GroupLayer) {
+                child.setLocked(locked);
+            } else {
+                child.locked = locked;
+            }
+        });
+    }
+
     draw() {
         const {dc, buffer} = this;
         dc.clear();
+        
+        // Only draw if group itself is visible
+        if (!this.visible) return;
         
         this.children.forEach(child => {
             if (child.visible) {

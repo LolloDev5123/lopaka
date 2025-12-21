@@ -98,7 +98,26 @@ export class Session {
         pointer: false,
     });
     removeLayer = (layer: AbstractLayer, saveHistory: boolean = true) => {
-        this.state.layers = this.state.layers.filter((l) => l.uid !== layer.uid);
+        // Helper to remove from any level
+        const removeFromLayers = (layers: AbstractLayer[]): boolean => {
+            const index = layers.findIndex(l => l.uid === layer.uid);
+            if (index > -1) {
+                layers.splice(index, 1);
+                return true;
+            }
+            // Check in groups
+            for (const l of layers) {
+                if (l instanceof GroupLayer) {
+                    if (removeFromLayers(l.children)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        };
+        
+        removeFromLayers(this.state.layers);
+        
         if (saveHistory) {
             this.history.push({
                 type: 'remove',
@@ -160,6 +179,9 @@ export class Session {
         // We need to keep relative order?
         const sorted = layers.slice().sort((a, b) => a.index - b.index);
         
+        // Clear selection state from layers before adding to group
+        sorted.forEach(l => l.selected = false);
+        
         group.layers = sorted;
         
         // Remove from session layers
@@ -170,6 +192,29 @@ export class Session {
         
         // Select group
         this.selectLayer(group);
+    };
+
+    ungroupLayers = (group: GroupLayer) => {
+        if (!(group instanceof GroupLayer)) return;
+        
+        // Get children from group
+        const children = group.children.slice();
+        
+        // Remove group from layers
+        this.state.layers = this.state.layers.filter(l => l.uid !== group.uid);
+        
+        // Add children back to main layer list
+        children.forEach(child => {
+            this.addLayer(child, false);
+        });
+        
+        // Select all ungrouped children
+        this.clearSelection();
+        children.forEach(child => {
+            child.selected = true;
+        });
+        
+        this.virtualScreen.redraw();
     };
 
     lockLayer = (layer: AbstractLayer, saveHistory: boolean = true) => {
@@ -227,15 +272,14 @@ export class Session {
     public updateScreenPreview(screen: TSessionScreen) {
         if (this.previewTimeout) clearTimeout(this.previewTimeout);
         this.previewTimeout = setTimeout(() => {
-            if (!this.previewCanvas) {
-                this.previewCanvas = new OffscreenCanvas(this.state.display.x, this.state.display.y);
+            // Use pixelSize to create canvas with correct aspect ratio
+            const width = this.state.display.x * this.state.pixelSize.x;
+            const height = this.state.display.y * this.state.pixelSize.y;
+            
+            if (!this.previewCanvas || this.previewCanvas.width !== width || this.previewCanvas.height !== height) {
+                this.previewCanvas = new OffscreenCanvas(width, height);
             }
             const canvas = this.previewCanvas;
-            // Resize if needed (though display usually constant per session, custom display might change it)
-            if (canvas.width !== this.state.display.x || canvas.height !== this.state.display.y) {
-                canvas.width = this.state.display.x;
-                canvas.height = this.state.display.y;
-            }
             
             const ctx = canvas.getContext('2d');
             ctx.fillStyle = '#000';
@@ -243,7 +287,11 @@ export class Session {
             
             screen.layers.slice().sort((a, b) => a.index - b.index).forEach(layer => {
                 if (layer.visible) {
+                     // Scale the layer drawing by pixelSize
+                     ctx.save();
+                     ctx.scale(this.state.pixelSize.x, this.state.pixelSize.y);
                      ctx.drawImage(layer.getBuffer(), 0, 0);
+                     ctx.restore();
                 }
             });
             
@@ -291,7 +339,23 @@ export class Session {
         layer.resize(display, scale);
         layer.index = layer.index ?? layers.length + 1;
         layer.name = layer.name ?? 'Layer ' + (layers.length + 1);
-        layers.unshift(layer);
+        
+        // Only add to group if:
+        // 1. Exactly one layer is selected
+        // 2. That layer is a GroupLayer
+        // 3. The group is expanded (user can see it's a target for new layers)
+        const selectedLayers = this.getSelectedLayers();
+        const shouldAddToGroup = selectedLayers.length === 1 && 
+                                selectedLayers[0] instanceof GroupLayer &&
+                                (selectedLayers[0] as GroupLayer).expanded;
+        
+        if (shouldAddToGroup) {
+            const selectedGroup = selectedLayers[0] as GroupLayer;
+            selectedGroup.children.unshift(layer);
+        } else {
+            layers.unshift(layer);
+        }
+        
         if (saveHistory) {
             this.history.push({
                 type: 'add',
@@ -380,8 +444,8 @@ export class Session {
     /**
      * Clear current selection
      */
-    public clearSelection() {
-        this.state.layers.forEach(l => l.selected = false);
+    public    clearSelection() {
+        this.getAllLayers().forEach((l) => (l.selected = false));
     }
 
     /**
@@ -401,8 +465,111 @@ export class Session {
     }
     
     public getSelectedLayers(): AbstractLayer[] {
-        return this.state.layers.filter(l => l.selected);
+        return this.getAllLayers().filter(l => l.selected);
     }
+    
+    /**
+     * Get all layers including those nested in groups (recursively)
+     */
+    getAllLayers(): AbstractLayer[] {
+        const result: AbstractLayer[] = [];
+        
+        const collectLayers = (layers: AbstractLayer[]) => {
+            for (const layer of layers) {
+                result.push(layer);
+                if (layer instanceof GroupLayer) {
+                    collectLayers(layer.children);
+                }
+            }
+        };
+        
+        collectLayers(this.state.layers);
+        return result;
+    }
+    
+    /**
+     * Find a layer by UID anywhere in the hierarchy
+     */
+    findLayerByUid(uid: string): AbstractLayer | null {
+        const findInLayers = (layers: AbstractLayer[]): AbstractLayer | null => {
+            for (const layer of layers) {
+                if (layer.uid === uid) return layer;
+                if (layer instanceof GroupLayer) {
+                    const found = findInLayers(layer.children);
+                    if (found) return found;
+                }
+            }
+            return null;
+        };
+        
+        return findInLayers(this.state.layers);
+    }
+    
+    /**
+     * Export entire project to .lpk format (JSON)
+     */
+    exportProject = () => {
+        const projectData = {
+            version: '1.0',
+            metadata: {
+                created: new Date().toISOString(),
+                modified: new Date().toISOString(),
+                appVersion: 'lopaka-1.0'
+            },
+            session: {
+                platform: this.state.platform,
+                display: {x: this.state.display.x, y: this.state.display.y},
+                isDisplayCustom: this.state.isDisplayCustom,
+                pixelSize: {x: this.state.pixelSize.x, y: this.state.pixelSize.y},
+                scale: {x: this.state.scale.x, y: this.state.scale.y},
+                screens: this.state.screens.map(screen => ({
+                    id: screen.id,
+                    name: screen.name,
+                    layers: screen.layers.map(layer => layer.state),
+                    preview: screen.preview
+                })),
+                activeScreenId: this.state.activeScreenId,
+                customImages: this.state.customImages,
+                customFonts: this.state.customFonts
+            }
+        };
+        return JSON.stringify(projectData, null, 2);
+    };
+    
+    /**
+     * Import project from .lpk format (JSON)
+     */
+    importProject = (jsonData: string) => {
+        try {
+            const projectData = JSON.parse(jsonData);
+            if (!projectData.version || projectData.version !== '1.0') {
+                throw new Error('Unsupported project version');
+            }
+            const sessionData = projectData.session;
+            this.state.platform = sessionData.platform;
+            this.state.display = new Point(sessionData.display.x, sessionData.display.y);
+            this.state.isDisplayCustom = sessionData.isDisplayCustom || false;
+            this.state.pixelSize = new Point(sessionData.pixelSize.x, sessionData.pixelSize.y);
+            this.state.scale = new Point(sessionData.scale.x, sessionData.scale.y);
+            this.state.customImages = sessionData.customImages || [];
+            this.state.customFonts = sessionData.customFonts || [];
+            this.state.screens = sessionData.screens.map(screenData => {
+                const layers = screenData.layers.map(layerState => {
+                    const LayerClass = this.LayerClassMap[layerState.t];
+                    if (!LayerClass) return null;
+                    const layer = new LayerClass(this.getPlatformFeatures());
+                    layer.state = layerState;
+                    return layer;
+                }).filter(l => l !== null);
+                return {id: screenData.id, name: screenData.name, layers, preview: screenData.preview || ''};
+            });
+            this.setActiveScreen(sessionData.activeScreenId || this.state.screens[0]?.id || 1);
+            return true;
+        } catch (error) {
+            console.error('Failed to import project:', error);
+            return false;
+        }
+    };
 
     generateCode = (): TSourceCode => {
         const {platform, layers} = this.state;

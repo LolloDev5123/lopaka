@@ -101,7 +101,7 @@ function classNames(layer) {
             
             <!-- Icon -->
             <Icon
-                :type="element.type"
+                :type="isGroup ? 'folder' : element.type"
                 sm
                 class="text-gray-500 min-w-4 mr-1"
             ></Icon>
@@ -159,7 +159,7 @@ function classNames(layer) {
                         :disabled="disabled"
                         :readonly="readonly"
                         :renaming-uid="renamingUid"
-                        @activate="emit('activate', $event)"
+                        @activate="(layer, event) => emit('activate', layer, event)"
                         @toggleVisibility="emit('toggleVisibility', $event)"
                         @contextMenu="emit('contextMenu', $event)" 
                         @toggleLock="emit('toggleLock', $event)"

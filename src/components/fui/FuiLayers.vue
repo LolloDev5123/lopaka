@@ -7,6 +7,7 @@ import {IconLayer} from '../../core/layers/icon.layer';
 import VueDraggable from 'vuedraggable';
 import Icon from '/src/components/layout/Icon.vue';
 import {PaintLayer} from '/src/core/layers/paint.layer';
+import {GroupLayer} from '/src/core/layers/group.layer';
 import FuiContextMenu, {ContextMenuAction} from './FuiContextMenu.vue';
 import FuiLayerItem from './FuiLayerItem.vue';
 
@@ -79,9 +80,17 @@ function handleContextMenu({event, layer}: {event: MouseEvent, layer: UnwrapRef<
     contextMenuActions.value = [
         ...(count > 1 ? [{
             label: 'Group Selected',
-            icon: 'folder', // Need to check if folder icon exists or use generic
+            icon: 'folder',
             action: () => {
                 session.groupLayers(finalSelection);
+                contextMenuVisible.value = false;
+            }
+        }] : []),
+        ...(layer instanceof GroupLayer ? [{
+            label: 'Ungroup',
+            icon: 'folder',
+            action: () => {
+                session.ungroupLayers(layer as any);
                 contextMenuVisible.value = false;
             }
         }] : []),
@@ -99,8 +108,12 @@ function handleContextMenu({event, layer}: {event: MouseEvent, layer: UnwrapRef<
             action: () => {
                 const toLock = !layer.locked;
                 finalSelection.forEach(l => {
-                    if (toLock) session.lockLayer(l as any);
-                    else session.unlockLayer(l as any);
+                    if (l instanceof GroupLayer) {
+                        (l as any).setLocked(toLock);
+                    } else {
+                        if (toLock) session.lockLayer(l as any);
+                        else session.unlockLayer(l as any);
+                    }
                 });
             }
         },
@@ -110,7 +123,11 @@ function handleContextMenu({event, layer}: {event: MouseEvent, layer: UnwrapRef<
             action: () => {
                 const toShow = !layer.visible;
                 finalSelection.forEach(l => {
-                    l.visible = toShow;
+                    if (l instanceof GroupLayer) {
+                        (l as any).setVisible(toShow);
+                    } else {
+                        l.visible = toShow;
+                    }
                 });
                 session.virtualScreen.redraw();
             }
@@ -146,7 +163,11 @@ function handleContextMenu({event, layer}: {event: MouseEvent, layer: UnwrapRef<
 </script>
 <template>
     <ul class="menu menu-xs w-full max-w-full p-0">
+        <div v-if="layers.length === 0" class="p-4 text-center text-gray-500 text-xs">
+            No layers yet. Create objects to get started.
+        </div>
         <VueDraggable
+            v-else
             class="layers-list max-w-full"
             v-model="layers"
             item-key="uid"

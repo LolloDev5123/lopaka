@@ -22,6 +22,7 @@ import {debounce, logEvent} from '/src/utils';
 import {PaintLayer} from '/src/core/layers/paint.layer';
 import {Uint32RawPlatform} from '/src/platforms/uint32-raw';
 import ImportImageBtn from './importImage/ImportImageBtn.vue';
+import FuiProjectIO from './FuiProjectIO.vue';
 
 const props = defineProps<{
     project: Project | null;

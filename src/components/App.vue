@@ -5,6 +5,7 @@ import FuiEditor from '/src/components/fui/FuiEditor.vue';
 import {Project, ProjectScreen} from '/src/types';
 import FuiLayers from './fui/FuiLayers.vue';
 import FuiScreens from '/src/components/fui/FuiScreens.vue';
+import FuiProjectIO from '/src/components/fui/FuiProjectIO.vue';
 
 const session = useSession();
 const {setIsPublic} = session;
@@ -66,13 +67,17 @@ function setErrorMessage(msg) {
                     <span>{{ infoMessage }}</span>
                 </div>
             </template>
+            <template #title>
+                <div class="flex justify-center py-3 px-4 border-b border-base-300 mb-4">
+                    <FuiProjectIO />
+                </div>
+            </template>
             <template #left>
                 <div class="flex flex-col h-full">
                     <FuiScreens />
                     <FuiLayers class="flex-grow" />
                 </div>
             </template>
-            <template #title></template>
         </FuiEditor>
     </div>
 </template>

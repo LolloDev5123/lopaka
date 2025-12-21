@@ -26,6 +26,9 @@ function selectDisplay(event) {
         selectedDisplay.value = event.target.value;
         lastDisplay.value = selectedDisplay.value;
         setDisplay(displays.value[selectedDisplay.value].size, true);
+        // Reset pixel aspect ratio to 1:1
+        session.state.pixelSize.x = 1;
+        session.state.pixelSize.y = 1;
     }
 }
 
@@ -47,6 +50,9 @@ function resetDisplay() {
     selectedDisplay.value = defaultIndex;
     setDisplay(displayToSet.size);
     saveDisplayCustom(false);
+    // Reset pixel aspect ratio to 1:1
+    session.state.pixelSize.x = 1;
+    session.state.pixelSize.y = 1;
 }
 
 function setCustomDisplay() {
