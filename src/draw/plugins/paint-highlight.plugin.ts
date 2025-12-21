@@ -13,7 +13,7 @@ export class PaintHighlightPlugin extends DrawPlugin {
                 (p: AbstractEditorPlugin) => p instanceof PaintPlugin
             ) as PaintPlugin;
         }
-        const {display, scale} = this.session.state;
+        const {display, scale, pixelSize} = this.session.state;
         const {interfaceColors} = this.session.getPlatformFeatures();
         if (point) {
             if (
@@ -26,9 +26,9 @@ export class PaintHighlightPlugin extends DrawPlugin {
                     ctx.save();
                     ctx.beginPath();
                     ctx.moveTo(0, point.y);
-                    ctx.lineTo(display.x * scale.x, point.y);
+                    ctx.lineTo(display.x * scale.x * pixelSize.x, point.y);
                     ctx.moveTo(point.x, 0);
-                    ctx.lineTo(point.x, display.y * scale.y);
+                    ctx.lineTo(point.x, display.y * scale.y * pixelSize.y);
                     ctx.strokeStyle = interfaceColors.selectionStrokeColor;
                     ctx.lineWidth = 2;
                     ctx.setLineDash([2, 4]);
@@ -36,8 +36,8 @@ export class PaintHighlightPlugin extends DrawPlugin {
                     ctx.beginPath();
                     const lastPoint = this.paintEditorPlugin.lastPoint
                         .clone()
-                        .multiply(scale)
-                        .add(scale.x / 2);
+                        .multiply(scale.clone().multiply(pixelSize))
+                        .add(scale.x * pixelSize.x / 2);
                     ctx.moveTo(lastPoint.x, lastPoint.y);
                     ctx.lineTo(point.x, point.y);
                     ctx.strokeStyle = interfaceColors.selectionStrokeColor;

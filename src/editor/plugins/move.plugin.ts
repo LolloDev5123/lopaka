@@ -11,7 +11,7 @@ export class MovePlugin extends AbstractEditorPlugin {
         const {layers} = this.session.state;
         const {activeTool} = this.session.editor.state;
         // if there is an active tool or any layer is being edited, do nothing
-        if (event.metaKey || event.ctrlKey || event.shiftKey || activeTool || layers.find((l) => l.isEditing())) {
+        if (activeTool || layers.find((l) => l.isEditing())) {
             return;
         }
         const selected = layers.filter((l) => l.selected && !l.locked);

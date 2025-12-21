@@ -142,7 +142,36 @@ export class Session {
         layer.selected = true;
         layer.draw();
         this.virtualScreen.redraw();
+        layer.selected = true;
+        layer.draw();
+        this.virtualScreen.redraw();
     };
+
+    groupLayers = (layers: AbstractLayer[]) => {
+        if (layers.length < 1) return;
+        
+        const group = new GroupLayer(this.getPlatformFeatures());
+        group.name = 'Group ' + (this.state.layers.filter(l => l instanceof GroupLayer).length + 1);
+        
+        // Calculate group bounds from children?
+        // For now, let's just move layers into group.
+        // And remove them from main list.
+        
+        // We need to keep relative order?
+        const sorted = layers.slice().sort((a, b) => a.index - b.index);
+        
+        group.layers = sorted;
+        
+        // Remove from session layers
+        this.state.layers = this.state.layers.filter(l => !layers.includes(l));
+        
+        // Add group
+        this.addLayer(group);
+        
+        // Select group
+        this.selectLayer(group);
+    };
+
     lockLayer = (layer: AbstractLayer, saveHistory: boolean = true) => {
         layer.locked = true;
         if (saveHistory) {
@@ -186,35 +215,46 @@ export class Session {
         if (nextScreen) {
             this.state.activeScreenId = nextScreen.id;
             this.state.layers = nextScreen.layers;
-            this.virtualScreen.redraw();
+            requestAnimationFrame(() => {
+                this.virtualScreen.redraw();
+            });
         }
     }
     
+    private previewCanvas: OffscreenCanvas = null;
+    private previewTimeout: any = null;
+
     public updateScreenPreview(screen: TSessionScreen) {
-        const canvas = new OffscreenCanvas(this.state.display.x, this.state.display.y);
-        const ctx = canvas.getContext('2d');
-        // draw layers
-        // We need to use the platform specific draw logic or just simplified composition?
-        // Let's us simplified composition for preview
-        ctx.fillStyle = '#000';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        screen.layers.slice().sort((a, b) => a.index - b.index).forEach(layer => {
-            if (layer.visible) {
-                 // assume layer buffer is up to date?
-                 // If layer was not active, its buffer might be empty?
-                 // No, buffer is persistent in AbstractLayer.
-                 ctx.drawImage(layer.getBuffer(), 0, 0);
+        if (this.previewTimeout) clearTimeout(this.previewTimeout);
+        this.previewTimeout = setTimeout(() => {
+            if (!this.previewCanvas) {
+                this.previewCanvas = new OffscreenCanvas(this.state.display.x, this.state.display.y);
             }
-        });
-        
-        canvas.convertToBlob().then(blob => {
-             const reader = new FileReader();
-             reader.onload = () => {
-                 screen.preview = reader.result as string;
-             };
-             reader.readAsDataURL(blob);
-        });
+            const canvas = this.previewCanvas;
+            // Resize if needed (though display usually constant per session, custom display might change it)
+            if (canvas.width !== this.state.display.x || canvas.height !== this.state.display.y) {
+                canvas.width = this.state.display.x;
+                canvas.height = this.state.display.y;
+            }
+            
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            screen.layers.slice().sort((a, b) => a.index - b.index).forEach(layer => {
+                if (layer.visible) {
+                     ctx.drawImage(layer.getBuffer(), 0, 0);
+                }
+            });
+            
+            canvas.convertToBlob().then(blob => {
+                 const reader = new FileReader();
+                 reader.onload = () => {
+                     screen.preview = reader.result as string;
+                 };
+                 reader.readAsDataURL(blob);
+            });
+        }, 500); // 500ms debounce
     }
     
     unlockLayer = (layer: AbstractLayer, saveHistory: boolean = true) => {
@@ -336,6 +376,33 @@ export class Session {
     setIsPublic = (enabled: boolean) => {
         this.state.isPublic = enabled;
     };
+
+    /**
+     * Clear current selection
+     */
+    public clearSelection() {
+        this.state.layers.forEach(l => l.selected = false);
+    }
+
+    /**
+     * Add layer to selection or toggle it
+     * @param layer 
+     * @param multi if true, toggle, else set as single active
+     */
+    public selectLayer(layer: AbstractLayer, multi: boolean = false) {
+        if (!multi) {
+            this.clearSelection();
+            layer.selected = true;
+        } else {
+             layer.selected = !layer.selected;
+        }
+        this.editor.selectionUpdate();
+        this.virtualScreen.redraw();
+    }
+    
+    public getSelectedLayers(): AbstractLayer[] {
+        return this.state.layers.filter(l => l.selected);
+    }
 
     generateCode = (): TSourceCode => {
         const {platform, layers} = this.state;

@@ -4,12 +4,13 @@ import {DrawPlugin} from './draw.plugin';
 export class HighlightPlugin extends DrawPlugin {
     public update(ctx: CanvasRenderingContext2D, point: Point): void {
         if (this.session.editor.state.activeTool) return;
-        const {scale, layers} = this.session.state;
+        const {scale, layers, pixelSize} = this.session.state;
         const {interfaceColors} = this.session.getPlatformFeatures();
+        const pixelScale = scale.clone().multiply(pixelSize);
         ctx.save();
         ctx.beginPath();
         layers.forEach((layer) => {
-            const bounds = layer.bounds.clone().multiply(scale).round().add(-0.5, -0.5, 1, 1);
+            const bounds = layer.bounds.clone().multiply(pixelScale).round().add(-0.5, -0.5, 1, 1);
             if (layer.selected) {
                 ctx.save();
                 ctx.strokeStyle = interfaceColors.selectColor;
@@ -21,12 +22,12 @@ export class HighlightPlugin extends DrawPlugin {
         });
         if (point) {
             const hovered = layers
-                .filter((l) => l.contains(point.clone().divide(scale).round()))
+                .filter((l) => l.contains(point.clone().divide(pixelScale).round()))
                 .sort((a, b) => b.index - a.index);
             if (hovered.length) {
                 const upperLayer = hovered[0];
                 if (!upperLayer.selected) {
-                    const bounds = upperLayer.bounds.clone().multiply(scale).round().add(-0.5, -0.5, 1, 1);
+                    const bounds = upperLayer.bounds.clone().multiply(pixelScale).round().add(-0.5, -0.5, 1, 1);
                     ctx.save();
                     ctx.strokeStyle = interfaceColors.hoverColor;
                     ctx.lineWidth = 1;

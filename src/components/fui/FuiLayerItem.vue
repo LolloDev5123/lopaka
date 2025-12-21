@@ -10,11 +10,30 @@ const props = defineProps<{
     element: AbstractLayer;
     disabled?: boolean;
     readonly?: boolean;
+    renamingUid?: string | null;
 }>();
 
-const emit = defineEmits(['activate', 'toggleVisibility', 'contextMenu', 'toggleLock', 'unlock']);
+const emit = defineEmits(['activate', 'toggleVisibility', 'contextMenu', 'toggleLock', 'unlock', 'startRenaming', 'stopRenaming']);
 
 const isOpen = ref(true);
+const nameInput = ref<HTMLInputElement | null>(null);
+
+const isRenaming = computed(() => props.renamingUid === props.element.uid);
+
+import { watch, nextTick } from 'vue';
+
+watch(isRenaming, (val) => {
+    if (val) {
+        nextTick(() => {
+            nameInput.value?.focus();
+            nameInput.value?.select();
+        });
+    }
+});
+
+function activeRenameStop() {
+    emit('stopRenaming');
+}
 
 function onToggleOpen() {
     // If we want state persistence for open/close, we should map 'expanded' property in GroupLayer
@@ -47,7 +66,7 @@ function classNames(layer) {
 <template>
     <li
         class="layer"
-        @click.stop="!disabled && emit('activate', element)"
+        @click.stop="!disabled && emit('activate', element, $event)"
         @contextmenu.stop="emit('contextMenu', {event: $event, layer: element})"
         v-show="element.type !== 'paint' || (element.type === 'paint' && (element as PaintLayer).data)"
     >
@@ -87,8 +106,19 @@ function classNames(layer) {
                 class="text-gray-500 min-w-4 mr-1"
             ></Icon>
             
-            <div class="truncate grow">
-                <span>{{ element.name }}</span>
+            <div class="truncate grow min-w-0 flex items-center overflow-hidden" @dblclick.stop="!readonly && !disabled && emit('startRenaming', element.uid)">
+                <input
+                    v-if="isRenaming"
+                    ref="nameInput"
+                    type="text"
+                    class="flex-1 p-0 h-5 bg-transparent border-none outline-none focus:outline-none focus:ring-0 text-inherit"
+                    style="min-width: 0; box-sizing: border-box;"
+                    v-model="element.name"
+                    @blur="activeRenameStop"
+                    @keydown.enter="activeRenameStop"
+                    @click.stop
+                />
+                <span v-else class="truncate">{{ element.name }}</span>
             </div>
             
             <!-- Lock Actions -->
@@ -128,11 +158,14 @@ function classNames(layer) {
                         :element="child"
                         :disabled="disabled"
                         :readonly="readonly"
+                        :renaming-uid="renamingUid"
                         @activate="emit('activate', $event)"
                         @toggleVisibility="emit('toggleVisibility', $event)"
                         @contextMenu="emit('contextMenu', $event)" 
                         @toggleLock="emit('toggleLock', $event)"
                         @unlock="emit('unlock', $event)"
+                        @startRenaming="emit('startRenaming', $event)"
+                        @stopRenaming="emit('stopRenaming')"
                     />
                 </template>
             </VueDraggable>

@@ -38,7 +38,7 @@ export class SelectPlugin extends AbstractEditorPlugin {
                 if (hovered.length) {
                     // if there is a hovered layer
                     const upperLayer = hovered[0];
-                    if (event.shiftKey && !upperLayer.locked) {
+                    if ((event.shiftKey || event.ctrlKey || event.metaKey) && !upperLayer.locked) {
                         // add or remove from selection if shift is pressed
                         upperLayer.selected = !upperLayer.selected;
                     } else if (!upperLayer.selected && !upperLayer.locked) {
@@ -59,11 +59,12 @@ export class SelectPlugin extends AbstractEditorPlugin {
 
     onMouseMove(point: Point, event: MouseEvent): void {
         if (this.captured) {
-            const {scale} = this.session.state;
+            const {scale, pixelSize} = this.session.state;
             const {interfaceColors} = this.session.getPlatformFeatures();
-            const screenPoint = point.clone().multiply(scale);
-            const position = this.firstPoint.clone().multiply(scale).min(screenPoint);
-            const size = point.clone().subtract(this.firstPoint).abs().multiply(scale);
+            const pixelScale = scale.clone().multiply(pixelSize);
+            const screenPoint = point.clone().multiply(pixelScale);
+            const position = this.firstPoint.clone().multiply(pixelScale).min(screenPoint);
+            const size = point.clone().subtract(this.firstPoint).abs().multiply(pixelScale);
             Object.assign(this.selectionElement.style, {
                 display: 'block',
                 borderColor: interfaceColors.selectionStrokeColor,

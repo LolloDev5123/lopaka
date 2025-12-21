@@ -2,20 +2,21 @@ import {DrawPlugin} from './draw.plugin';
 
 export class SmartRulerPlugin extends DrawPlugin {
     public update(ctx: CanvasRenderingContext2D): void {
-        const {layers, scale, display} = this.session.state;
+        const {layers, scale, display, pixelSize} = this.session.state;
         const selected = layers.filter((layer) => layer.selected || layer.isEditing());
         const {interfaceColors} = this.session.getPlatformFeatures();
         const textColor = interfaceColors.rulerColor;
         const lineColor = interfaceColors.rulerLineColor;
+        const pixelScale = scale.clone().multiply(pixelSize);
         if (selected.length) {
             // show distance to left and top
             ctx.save();
             ctx.beginPath();
             ctx.font = '10px sans-serif';
-            const maxPoint = display.clone().multiply(scale).round();
+            const maxPoint = display.clone().multiply(pixelScale).round();
             const bounds = selected.reduce((bounds, layer) => bounds.extends(layer.bounds), selected[0].bounds);
-            const p1 = bounds.pos.clone().multiply(scale).round().add(0.5, 0.5);
-            const p2 = bounds.size.clone().multiply(scale).add(p1).round().subtract(0.5, 0.5);
+            const p1 = bounds.pos.clone().multiply(pixelScale).round().add(0.5, 0.5);
+            const p2 = bounds.size.clone().multiply(pixelScale).add(p1).round().subtract(0.5, 0.5);
             // horizontal line p1
             ctx.moveTo(-9, p1.y);
             ctx.lineTo(maxPoint.x, p1.y);

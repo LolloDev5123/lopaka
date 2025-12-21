@@ -4,6 +4,7 @@ import {useSession} from '/src/core/session';
 import FuiEditor from '/src/components/fui/FuiEditor.vue';
 import {Project, ProjectScreen} from '/src/types';
 import FuiLayers from './fui/FuiLayers.vue';
+import FuiScreens from '/src/components/fui/FuiScreens.vue';
 
 const session = useSession();
 const {setIsPublic} = session;
@@ -66,7 +67,10 @@ function setErrorMessage(msg) {
                 </div>
             </template>
             <template #left>
-                <FuiLayers></FuiLayers>
+                <div class="flex flex-col h-full">
+                    <FuiScreens />
+                    <FuiLayers class="flex-grow" />
+                </div>
             </template>
             <template #title></template>
         </FuiEditor>

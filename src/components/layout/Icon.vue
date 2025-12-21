@@ -47,6 +47,10 @@ import {
     ArrowUpOnSquareIcon,
     EyeIcon,
     EyeSlashIcon,
+    PlusIcon,
+    ChevronDownIcon,
+    ChevronRightIcon,
+    FolderIcon,
 } from '@heroicons/vue/24/outline';
 import {StarIcon as StarSolidIcon, XMarkIcon} from '@heroicons/vue/24/solid';
 
@@ -110,6 +114,10 @@ const icons = {
     'zoom-out': MagnifyingGlassMinusIcon,
     eye: EyeIcon,
     'eye-off': EyeSlashIcon,
+    plus: PlusIcon,
+    'chevron-down': ChevronDownIcon,
+    'chevron-right': ChevronRightIcon,
+    folder: FolderIcon,
 };
 
 const classList = computed(() => ({

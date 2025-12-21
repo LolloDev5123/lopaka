@@ -22,6 +22,7 @@ const contextMenuVisible = ref(false);
 const contextMenuX = ref(0);
 const contextMenuY = ref(0);
 const contextMenuActions = ref<ContextMenuAction[]>([]);
+const renamingUid = ref<string | null>(null);
 
 const disabled = computed(
     () =>
@@ -41,11 +42,16 @@ const layers = computed({
     },
 });
 
-function setActive(layer: UnwrapRef<AbstractLayer>) {
-    session.state.layers.forEach((l) => (l.selected = false));
-    layer.selected = true;
-    session.editor.selectionUpdate();
-    session.virtualScreen.redraw();
+// function setActive(layer: UnwrapRef<AbstractLayer>) {
+//     session.state.layers.forEach((l) => (l.selected = false));
+//     layer.selected = true;
+//     session.editor.selectionUpdate();
+//     session.virtualScreen.redraw();
+// }
+
+function setActive(layer: UnwrapRef<AbstractLayer>, event: MouseEvent) {
+    const multi = event.ctrlKey || event.metaKey || event.shiftKey;
+    session.selectLayer(layer as any, multi);
 }
 
 function toggleVisibility(layer: UnwrapRef<AbstractLayer>) {
@@ -60,38 +66,77 @@ function handleContextMenu({event, layer}: {event: MouseEvent, layer: UnwrapRef<
     contextMenuX.value = event.clientX;
     contextMenuY.value = event.clientY;
     
+    const selectedLayers = session.getSelectedLayers();
+    // If target layer is not in selection, select it (single)
+    if (!selectedLayers.find(l => l.uid === layer.uid)) {
+        session.selectLayer(layer as any);
+        // re-fetch selected (now just this one)
+    }
+    const finalSelection = session.getSelectedLayers();
+    const count = finalSelection.length;
+    const labelSuffix = count > 1 ? ` (${count})` : '';
+    
     contextMenuActions.value = [
-        {
-            label: layer.locked ? 'Unlock' : 'Lock',
-            icon: layer.locked ? 'lock-open' : 'lock-closed',
+        ...(count > 1 ? [{
+            label: 'Group Selected',
+            icon: 'folder', // Need to check if folder icon exists or use generic
             action: () => {
-                if (layer.locked) session.unlockLayer(layer as any);
-                else session.lockLayer(layer as any);
+                session.groupLayers(finalSelection);
+                contextMenuVisible.value = false;
+            }
+        }] : []),
+        {
+            label: 'Rename',
+            icon: 'edit',
+            action: () => {
+                renamingUid.value = layer.uid;
+                contextMenuVisible.value = false;
             }
         },
         {
-            label: layer.visible ? 'Hide' : 'Show',
-            icon: layer.visible ? 'eye-off' : 'eye',
-            action: () => toggleVisibility(layer)
+            label: (layer.locked ? 'Unlock' : 'Lock') + labelSuffix,
+            icon: layer.locked ? 'lock-open' : 'lock-closed',
+            action: () => {
+                const toLock = !layer.locked;
+                finalSelection.forEach(l => {
+                    if (toLock) session.lockLayer(l as any);
+                    else session.unlockLayer(l as any);
+                });
+            }
         },
         {
-            label: 'Duplicate',
-            icon: 'clone',
+            label: (layer.visible ? 'Hide' : 'Show') + labelSuffix,
+            icon: layer.visible ? 'eye-off' : 'eye',
             action: () => {
-                const clone = layer.clone();
-                // move slightly
-                clone.bounds.x += 10;
-                clone.bounds.y += 10;
-                clone.name = `${layer.name} copy`;
-                session.addLayer(clone);
+                const toShow = !layer.visible;
+                finalSelection.forEach(l => {
+                    l.visible = toShow;
+                });
                 session.virtualScreen.redraw();
             }
         },
         {
-            label: 'Delete',
+            label: 'Duplicate' + labelSuffix,
+            icon: 'clone',
+            action: () => {
+                // Determine offset for all
+                finalSelection.forEach(l => {
+                    const clone = l.clone();
+                    clone.bounds.x += 10;
+                    clone.bounds.y += 10;
+                    clone.name = `${l.name} copy`;
+                    session.addLayer(clone);
+                });
+                session.virtualScreen.redraw();
+            }
+        },
+        {
+            label: 'Delete' + labelSuffix,
             icon: 'trash',
             class: 'text-error',
-            action: () => session.removeLayer(layer as any)
+            action: () => {
+                finalSelection.forEach(l => session.removeLayer(l as any));
+            }
         }
     ];
     
@@ -100,7 +145,7 @@ function handleContextMenu({event, layer}: {event: MouseEvent, layer: UnwrapRef<
 
 </script>
 <template>
-    <ul class="menu menu-xs w-[250px] p-0"> <!-- increased width for nested items -->
+    <ul class="menu menu-xs w-full max-w-full p-0">
         <VueDraggable
             class="layers-list max-w-full"
             v-model="layers"
@@ -115,11 +160,14 @@ function handleContextMenu({event, layer}: {event: MouseEvent, layer: UnwrapRef<
                     :element="element"
                     :disabled="disabled"
                     :readonly="readonly"
-                    @activate="setActive"
+                    :renaming-uid="renamingUid"
+                    @activate="(layer, event) => setActive(layer, event)" 
                     @toggleVisibility="toggleVisibility"
                     @contextMenu="handleContextMenu"
                     @toggleLock="session.lockLayer(element as any)"
                     @unlock="session.unlockLayer(element as any)"
+                    @startRenaming="renamingUid = $event"
+                    @stopRenaming="renamingUid = null"
                 />
             </template>
         </VueDraggable>
