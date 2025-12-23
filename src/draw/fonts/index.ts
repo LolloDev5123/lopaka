@@ -1,10 +1,15 @@
 import {BDFFont} from './bdf.font';
 import {BinaryFont} from './binary.font';
+import {ColumnarFont} from './columnar.font';
 import {Font, FontFormat} from './font';
 import {TTFFont} from './ttf.font';
 import {GFXFont} from '/src/draw/fonts/gfx.font';
 
 const loadedFonts: Map<string, Font> = new Map();
+
+// List of columnar font names for detection
+const COLUMNAR_FONTS = ['BigDigits', 'Big', 'Small', 'SmallBold', 'SmallDigits', 'Pixel3x5'];
+
 export async function loadFont(platformFont: TPlatformFont): Promise<Font> {
     if (!loadedFonts.has(platformFont.name)) {
         let font: Font;
@@ -19,7 +24,12 @@ export async function loadFont(platformFont: TPlatformFont): Promise<Font> {
                 font = new BinaryFont(platformFont.file, platformFont.name, platformFont.options);
                 break;
             case FontFormat.FORMAT_GFX:
-                font = new GFXFont(platformFont.file, platformFont.name, platformFont.options);
+                // Check if this is a columnar font by name
+                if (COLUMNAR_FONTS.includes(platformFont.name)) {
+                    font = new ColumnarFont(platformFont.file, platformFont.name, platformFont.options);
+                } else {
+                    font = new GFXFont(platformFont.file, platformFont.name, platformFont.options);
+                }
                 break;
         }
         await font.fontReady;

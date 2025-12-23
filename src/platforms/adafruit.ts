@@ -1,7 +1,7 @@
 import {getLayerProperties} from '../core/decorators/mapping';
 import {AbstractImageLayer} from '../core/layers/abstract-image.layer';
 import {AbstractLayer} from '../core/layers/abstract.layer';
-import {fontTypes, gfxFonts} from '../draw/fonts/fontTypes';
+import {fontTypes, gfxFonts, columnarFonts} from '../draw/fonts/fontTypes';
 import {imgDataToXBMP, packedHexColor565, toCppVariableName} from '../utils';
 import {AdafruitParser} from './parsers/adafruit.parser';
 import {Platform} from './platform';
@@ -12,7 +12,7 @@ export class AdafruitPlatform extends Platform {
     public static id = 'adafruit_gfx';
     protected name = 'AdafruitGFX Color';
     protected description = 'Adafruit GFX Colored';
-    protected fonts: TPlatformFont[] = [fontTypes['adafruit'], ...gfxFonts];
+    protected fonts: TPlatformFont[] = [fontTypes['adafruit'], ...gfxFonts, ...columnarFonts];
     protected parser: AdafruitParser = new AdafruitParser();
 
     constructor() {

@@ -1,7 +1,7 @@
 import {getLayerProperties} from '../core/decorators/mapping';
 import {AbstractImageLayer} from '../core/layers/abstract-image.layer';
 import {AbstractLayer} from '../core/layers/abstract.layer';
-import {fontTypes, gfxFonts} from '../draw/fonts/fontTypes';
+import {fontTypes, gfxFonts, columnarFonts} from '../draw/fonts/fontTypes';
 import {imgDataToXBMP, packedHexColor565, toCppVariableName} from '../utils';
 import {ArduinoGFXParser} from './parsers/arduinogfx.parser';
 import {Platform} from './platform';
@@ -12,7 +12,7 @@ export class ArduinoGFXPlatform extends Platform {
     public static id = 'arduino_gfx';
     protected name = 'ArduinoGFX Library';
     protected description = 'Arduino GFX Colored';
-    protected fonts: TPlatformFont[] = [fontTypes['adafruit'], ...gfxFonts];
+    protected fonts: TPlatformFont[] = [fontTypes['adafruit'], ...gfxFonts, ...columnarFonts];
     protected parser: ArduinoGFXParser = new ArduinoGFXParser();
 
     constructor() {

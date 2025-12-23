@@ -1,7 +1,7 @@
 import {getLayerProperties} from '/src/core/decorators/mapping';
 import {AbstractImageLayer} from '/src/core/layers/abstract-image.layer';
 import {AbstractLayer} from '/src/core/layers/abstract.layer';
-import {fontTypes, gfxFonts} from '../draw/fonts/fontTypes';
+import {fontTypes, gfxFonts, columnarFonts} from '../draw/fonts/fontTypes';
 import {imgDataToXBMP, packedHexColor565, toCppVariableName} from '../utils';
 import {Platform} from './platform';
 import defaultTemplate from './templates/tft-espi/default.pug';
@@ -15,7 +15,7 @@ export class TFTeSPIPlatform extends Platform {
     public static id = 'tft-espi';
     protected name = 'TFT_eSPI, M5, Lovyan';
     protected description = 'TFT_eSPI';
-    protected fonts: TPlatformFont[] = [fontTypes['adafruit'], ...gfxFonts];
+    protected fonts: TPlatformFont[] = [fontTypes['adafruit'], ...gfxFonts, ...columnarFonts];
     protected parser: AbstractParser = new TFTeSPIParser();
 
     constructor() {

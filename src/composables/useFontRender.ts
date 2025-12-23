@@ -6,14 +6,46 @@ export function useFontRender() {
     const renderFontToCanvas = (font: Font, text: string, inputScale: number = 1): HTMLCanvasElement | null => {
         if (!font) return null;
 
-        // Sanitize text: replace missing characters with [?]
-        let safeText = '';
+        // Check if font can render at least half of the text
+        let usableChars = 0;
         for (let i = 0; i < text.length; i++) {
-            const code = text.charCodeAt(i);
-            if (font.hasChar(code)) {
-                safeText += text[i];
-            } else {
-                safeText += '[?]';
+            if (font.hasChar(text.charCodeAt(i))) usableChars++;
+        }
+        
+        // If less than half the characters exist, generate text from available glyphs
+        let safeText = text;
+        if (usableChars < text.length / 2) {
+            // Get first 10-15 available characters from the font
+            safeText = '';
+            const maxChars = 15;
+            
+            // Try common printable ASCII range first (32-126)
+            for (let code = 32; code <= 126 && safeText.length < maxChars; code++) {
+                if (font.hasChar(code)) {
+                    safeText += String.fromCharCode(code);
+                }
+            }
+            
+            // If still empty, try extended range
+            if (safeText.length === 0) {
+                for (let code = 0; code < 256 && safeText.length < maxChars; code++) {
+                    if (font.hasChar(code)) {
+                        safeText += String.fromCharCode(code);
+                    }
+                }
+            }
+            
+            if (safeText.length === 0) return null; // Font has no renderable characters
+        } else {
+            // Sanitize text: replace missing characters with [?]
+            safeText = '';
+            for (let i = 0; i < text.length; i++) {
+                const code = text.charCodeAt(i);
+                if (font.hasChar(code)) {
+                    safeText += text[i];
+                } else {
+                    safeText += '[?]';
+                }
             }
         }
 
