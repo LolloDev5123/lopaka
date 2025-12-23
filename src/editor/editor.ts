@@ -119,19 +119,26 @@ export class Editor {
         } else {
             let offsetX;
             let offsetY;
+            
+            // The container has margin (for padding), and offsetX/Y might be relative
+            // to different elements depending on where the event bubbled from.
+            // Use getBoundingClientRect for consistency
+            const rect = this.container.getBoundingClientRect();
+            
             if ((event as TouchEvent).touches) {
                 const touch = (event as TouchEvent).touches[0];
-                offsetX = touch.clientX - this.container.getBoundingClientRect().left;
-                offsetY = touch.clientY - this.container.getBoundingClientRect().top;
+                offsetX = touch.clientX - rect.left;
+                offsetY = touch.clientY - rect.top;
             } else {
-                offsetX = (event as MouseEvent).offsetX;
-                offsetY = (event as MouseEvent).offsetY;
+                const mouseEvent = event as MouseEvent;
+                offsetX = mouseEvent.clientX - rect.left;
+                offsetY = mouseEvent.clientY - rect.top;
             }
             const screenPoint = new Point(offsetX, offsetY).clone();
             const point = screenPoint
                 .clone()
                 .divide(scale.clone().multiply(state.pixelSize))
-                .floor(); //.boundTo(new Rect(new Point(), display));
+                .floor();
             let alienEvent: boolean = false;
 
             switch (event.type) {

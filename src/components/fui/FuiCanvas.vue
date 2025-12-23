@@ -71,7 +71,7 @@ const canvasClassNames = computed(() => {
                 :style="{
                     margin: displaySettings.padding + 'px'
                 }"
-                @mousedown.prevent="editor.handleEvent"
+                @mousedown.prevent="handleEvent"
                 @mousemove.prevent="handleEvent"
                 @touchstart.prevent="handleEvent"
                 @touchend.prevent="handleEvent"

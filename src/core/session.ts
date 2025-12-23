@@ -291,7 +291,21 @@ export class Session {
         if (nextScreen) {
             this.state.activeScreenId = nextScreen.id;
             this.state.layers = nextScreen.layers;
+            
+            // Store current tool name before clearing
+            const currentTool = this.editor.state.activeTool;
+            const toolName = currentTool ? Object.keys(this.editor.tools).find(
+                key => this.editor.tools[key] === currentTool
+            ) : null;
+            
+            // Clear editor state completely to trigger reactivity
+            this.editor.clear();
+            
+            // Defer reactivation to ensure layers are fully reactive
             requestAnimationFrame(() => {
+                if (toolName) {
+                    this.editor.setTool(toolName);
+                }
                 this.virtualScreen.redraw();
             });
         }
