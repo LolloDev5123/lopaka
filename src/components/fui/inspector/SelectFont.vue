@@ -2,13 +2,14 @@
 import {computed, defineProps, ref, toRefs} from 'vue';
 import {logEvent} from '/src/utils';
 import SelectFontWizard from './SelectFontWizard.vue';
+import FontListItem from './FontListItem.vue';
 
 const props = defineProps<{
     fonts: TPlatformFont[];
-    fontsUsed: string[];
+    fontsUsed?: string[];
     disabled: boolean;
     fontValue: string;
-    project_id: number;
+    project_id?: number;
 }>();
 
 const fontsList = computed(() => {
@@ -82,17 +83,20 @@ function closeWizard() {
         <div class="overflow-hidden w-48 right-[100%] -top-2 absolute z-10 rounded-box">
             <ul
                 ref="fontsMenu"
-                class="menu menu-xs max-h-[75vh] overflow-scroll box-content bg-secondary block hidden"
+                class="menu menu-xs max-h-[75vh] overflow-scroll box-content bg-secondary block hidden relative"
             >
+                 
                 <li
                     v-for="font in fonts"
                     :key="font.name"
+                    :title="font.title"
                 >
                     <a
                         :class="{active: fontValue === font.name}"
                         @click="onClick(font)"
+                        class="h-10 p-1"
                     >
-                        {{ font.title }}
+                         <FontListItem :platformFont="font" />
                     </a>
                 </li>
             </ul>

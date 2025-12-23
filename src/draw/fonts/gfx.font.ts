@@ -56,6 +56,8 @@ export class GFXFont extends Font {
     drawText(dc: DrawContext, text: string, position: Point, scaleFactor: number = 1): void {
         const {meta, glyphs} = this.fontData;
         const charPos = position.clone();
+        dc.ctx.save();
+        // dc.ctx.fillStyle = 'red'; // Should be set by caller, but ensure path is clean
         dc.ctx.beginPath();
         for (let i = 0; i < text.length; i++) {
             const charCode = text.charCodeAt(i);
@@ -82,5 +84,6 @@ export class GFXFont extends Font {
             }
         }
         dc.ctx.fill();
+        dc.ctx.restore();
     }
 }

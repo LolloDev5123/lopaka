@@ -1,13 +1,15 @@
 import {Point} from '../core/point';
 
 export class DrawContext {
-    ctx: OffscreenCanvasRenderingContext2D;
-    constructor(private canvas: OffscreenCanvas) {
-        this.ctx = canvas.getContext('2d', {
+    ctx: OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D;
+    constructor(private canvas: OffscreenCanvas | HTMLCanvasElement) {
+        const ctx = canvas.getContext('2d', {
             alpha: true,
             desynchronized: true,
             willReadFrequently: true
         });
+        if (!ctx) throw new Error('Failed to get 2d context');
+        this.ctx = ctx as OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D;
     }
 
     clear(): DrawContext {
