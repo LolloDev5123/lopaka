@@ -104,6 +104,8 @@ export class VirtualScreen {
                 this.plugins.forEach((plugin) => {
                     ctx.save();
                     ctx.scale(2, 2);
+                    // Container has margin=padding, pluginLayer positioned at -offset
+                    // So we just translate by offset to align (0,0) with screen top-left
                     ctx.translate(DrawPlugin.offset.x, DrawPlugin.offset.y);
                     plugin.update(ctx, position, event);
                     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -119,24 +121,52 @@ export class VirtualScreen {
     }
 
     public resize() {
-        const {display, scale, layers, pixelSize} = this.session.state;
+        const {display, scale, layers, pixelSize, displaySettings} = this.session.state;
         const size = display.clone();
         this.screen.width = size.x;
         this.screen.height = size.y;
+        
+        // Visual size includes padding for the container size calculations if necessary,
+        // but typically FuiCanvas handles container sizing via DOM.
+        // However, pluginLayer is ABSOLUTE positioned and needs specific dimensions.
+        // It needs to cover Screen + Padding + Offset.
+        
+        const padding = displaySettings.padding;
+        const screenWidth = size.x * scale.x * pixelSize.x;
+        const screenHeight = size.y * scale.y * pixelSize.y;
+
         if (this.canvas) {
             this.canvas.width = size.x;
             this.canvas.height = size.y;
+            // Canvas styles are bound in FuiCanvas, but we can sync here if needed. 
+            // Actually FuiCanvas binds width/height style, so we might not need to touch .style here?
+            // The existing code does updates styles. Let's keep it consistent but FuiCanvas might override.
             Object.assign(this.canvas.style, {
-                width: `${size.x * scale.x * pixelSize.x}px`,
-                height: `${size.y * scale.y * pixelSize.y}px`,
+                width: `${screenWidth}px`,
+                height: `${screenHeight}px`,
             });
         }
         if (this.pluginLayer) {
-            this.pluginLayer.width = (size.x * scale.x * pixelSize.x + DrawPlugin.offset.x * 2) * 2;
-            this.pluginLayer.height = (size.y * scale.y * pixelSize.y + DrawPlugin.offset.y * 2) * 2;
+            // pluginLayer needs to cover the screen plus padding plus offset
+            // And it is positioned at -offset relative to container top-left.
+            // Container top-left is 0,0. Screen starts at padding,padding.
+            // So logical 0,0 is at padding,padding.
+            // PluginLayer needs to cover from -Offset to ScreenEnd + Padding + Offset ??
+            // Existing logic: width = (ScreenVal + Offset*2) * 2 (scale 2 for retina?).
+            // We need to add Padding * 2 (left and right / top and bottom).
+            
+            const totalWidth = screenWidth + DrawPlugin.offset.x * 2 + padding * 2;
+            const totalHeight = screenHeight + DrawPlugin.offset.y * 2 + padding * 2;
+            
+            this.pluginLayer.width = totalWidth * 2;
+            this.pluginLayer.height = totalHeight * 2;
             Object.assign(this.pluginLayer.style, {
-                width: `${size.x * scale.x * pixelSize.x + DrawPlugin.offset.x * 2}px`,
-                height: `${size.y * scale.y * pixelSize.y + DrawPlugin.offset.y * 2}px`,
+                width: `${totalWidth}px`,
+                height: `${totalHeight}px`,
+                // Now that container has margin (padding), we can position relative to it
+                // The margin creates space, and we position at -offset to reach into that space
+                left: `-${DrawPlugin.offset.x}px`,
+                top: `-${DrawPlugin.offset.y}px`,
             });
         }
         layers.forEach((layer: AbstractLayer) => {
@@ -189,13 +219,31 @@ export class VirtualScreen {
         if (update) {
             this.state.updates++;
         }
-        // create data without alpha channel
-        const data = this.ctx.getImageData(0, 0, this.screen.width, this.screen.height).data.map((v, i) => {
-            if (i % 4 === 3) return v >= 255 / 2 ? 255 : 0;
-            return v;
-        });
+        // Create data without alpha channel and apply foreground color
+        const { displaySettings } = this.session.state;
+        // Parse hex color to RGB
+        const hex = displaySettings.foregroundColor.replace('#', '');
+        const r = parseInt(hex.substring(0, 2), 16);
+        const g = parseInt(hex.substring(2, 4), 16);
+        const b = parseInt(hex.substring(4, 6), 16);
+
+        const data = this.ctx.getImageData(0, 0, this.screen.width, this.screen.height).data;
+        const newData = new Uint8ClampedArray(data.length);
+        
+        for (let i = 0; i < data.length; i += 4) {
+            const alpha = data[i + 3];
+            if (alpha >= 255 / 2) {
+                newData[i] = r;
+                newData[i + 1] = g;
+                newData[i + 2] = b;
+                newData[i + 3] = 255;
+            } else {
+                newData[i + 3] = 0;
+            }
+        }
+
         this.canvasContext.putImageData(
-            new ImageData(new Uint8ClampedArray(data), this.screen.width, this.screen.height),
+            new ImageData(newData, this.screen.width, this.screen.height),
             0,
             0
         );
@@ -212,7 +260,8 @@ export class VirtualScreen {
                 this.plugins.forEach((plugin) => {
                     ctx.save();
                     ctx.scale(2, 2);
-                    ctx.translate(DrawPlugin.offset.x, DrawPlugin.offset.y);
+                    const padding = this.session.state.displaySettings.padding;
+                    ctx.translate(DrawPlugin.offset.x + padding, DrawPlugin.offset.y + padding);
                     plugin.update(ctx, null, null);
                     ctx.setTransform(1, 0, 0, 1, 0, 0);
                     ctx.restore();

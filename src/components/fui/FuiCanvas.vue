@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import {computed, onBeforeUnmount, onMounted, ref, toRefs} from 'vue';
 import {useSession} from '../../core/session';
+import FuiGrid from './FuiGrid.vue';
 
 const props = defineProps<{
     readonly?: Boolean;
@@ -18,7 +19,7 @@ const screen = ref(null);
 const container = ref(null);
 const session = useSession();
 const {editor, virtualScreen, state} = session;
-const {display, scale, pixelSize, lock} = toRefs(state);
+const {display, scale, pixelSize, lock, displaySettings} = toRefs(state);
 const {activeTool} = toRefs(editor.state);
 
 onMounted(() => {
@@ -58,12 +59,18 @@ const canvasClassNames = computed(() => {
     <div
         class="canvas-wrapper"
         :class="{locked: lock}"
+        :style="{
+            backgroundColor: displaySettings.backgroundColor
+        }"
     >
         <div class="fui-grid">
             <div
                 ref="container"
                 class="relative"
                 :class="canvasClassNames"
+                :style="{
+                    margin: displaySettings.padding + 'px'
+                }"
                 @mousedown.prevent="editor.handleEvent"
                 @mousemove.prevent="handleEvent"
                 @touchstart.prevent="handleEvent"
@@ -76,6 +83,17 @@ const canvasClassNames = computed(() => {
                 @drop.prevent="handleEvent"
                 @contextmenu.prevent
             >
+                <!-- Canvas Grid Overlay -->
+                <FuiGrid
+                    :width="display.x * scale.x * pixelSize.x"
+                    :height="display.y * scale.y * pixelSize.y"
+                    :cell-size="scale.x * pixelSize.x"
+                    :opacity="displaySettings.grid.opacity"
+                    :color="displaySettings.grid.color"
+                    :visible="displaySettings.grid.visible"
+                    :line-width="displaySettings.grid.width"
+                />
+                
                 <canvas
                     ref="screen"
                     class="screen"
@@ -84,7 +102,8 @@ const canvasClassNames = computed(() => {
                     :style="{
                         width: display.x * scale.x * pixelSize.x + 'px',
                         height: display.y * scale.y * pixelSize.y + 'px',
-                        backgroundColor: session.getPlatformFeatures().screenBgColor,
+                        backgroundColor: displaySettings.backgroundColor,
+                        boxShadow: `0 0 ${displaySettings.glow}px ${displaySettings.backgroundColor}`
                     }"
                 />
             </div>
@@ -100,6 +119,8 @@ const canvasClassNames = computed(() => {
     background-color: white;
     height: fit-content;
     border: 10px solid oklch(var(--b1));
+    transition: background-color 0.2s, padding 0.2s;
+    overflow: visible; /* Allow glow to extend beyond wrapper */
 }
 
 .fui-canvas__event-target {
@@ -135,20 +156,11 @@ const canvasClassNames = computed(() => {
 .fui-grid {
     box-sizing: content-box;
     position: relative;
-    &::after {
-        content: '';
-        position: absolute;
-        inset: 0;
-        background-image: linear-gradient(to right, var(--color-grid) 0.1px, transparent 0.5px),
-            linear-gradient(to bottom, var(--color-grid) 0.1px, transparent 0.5px);
-        background-size: v-bind(gridSize);
-        opacity: 0.2;
-        z-index: 1;
-        pointer-events: none;
-        display: v-bind(gridDisplay);
-    }
     border: 1px solid oklch(var(--s));
+    overflow: visible; /* Allow glow to extend beyond grid */
 }
+
+
 
 .fui-canvas_select {
     cursor: default;

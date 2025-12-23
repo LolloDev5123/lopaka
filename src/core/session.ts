@@ -42,6 +42,18 @@ type TSessionState = {
     screens: TSessionScreen[];
     activeScreenId: number;
     projectName: string;
+    displaySettings: {
+        backgroundColor: string;
+        foregroundColor: string;
+        glow: number;
+        grid: {
+            visible: boolean;
+            opacity: number;
+            color: string;
+            width: number;
+        };
+        padding: number;
+    };
 };
 
 export type TSessionScreen = {
@@ -92,6 +104,18 @@ export class Session {
         }],
         activeScreenId: 1,
         projectName: 'Untitled Project',
+        displaySettings: {
+            backgroundColor: '#000000',
+            foregroundColor: '#FFFFFF',
+            glow: 0,
+            grid: {
+                visible: false,
+                opacity: 20,
+                color: '#808080',
+                width: 0.1
+            },
+            padding: 0
+        },
     });
 
     history: ChangeHistory = useHistory();
@@ -545,7 +569,8 @@ export class Session {
                 })),
                 activeScreenId: this.state.activeScreenId,
                 customImages: this.state.customImages,
-                customFonts: this.state.customFonts
+                customFonts: this.state.customFonts,
+                displaySettings: this.state.displaySettings
             }
         };
         return JSON.stringify(projectData, null, 2);
@@ -568,6 +593,9 @@ export class Session {
             this.state.scale = new Point(sessionData.scale.x, sessionData.scale.y);
             this.state.customImages = sessionData.customImages || [];
             this.state.customFonts = sessionData.customFonts || [];
+            if (sessionData.displaySettings) {
+                this.state.displaySettings = sessionData.displaySettings;
+            }
             this.state.screens = sessionData.screens.map(screenData => {
                 const layers = screenData.layers.map(layerState => {
                     const LayerClass = this.LayerClassMap[layerState.t];
