@@ -5,7 +5,7 @@ import {Font, FontFormat} from './font';
  * @deprecated use BDFFont instead
  */
 export class BinaryFont extends Font {
-    data: ArrayBuffer;
+    data: Uint8Array;
     constructor(
         protected source: TFontSource,
         public name: string,
@@ -58,5 +58,9 @@ export class BinaryFont extends Font {
 
     getCharData(charCode: number): Uint8Array {
         return new Uint8Array(this.data.slice(charCode * 5, charCode * 5 + 5));
+    }
+
+    hasChar(code: number): boolean {
+        return code * 5 < this.data.length;
     }
 }

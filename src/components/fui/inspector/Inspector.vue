@@ -304,7 +304,7 @@ const LABELS = {
                                 :fontsUsed="fontsUsed"
                                 :project_id="project.id"
                                 :disabled="readonly"
-                                :fontValue="param.getValue()"
+                                :fontValue="updates ? param.getValue() : param.getValue()"
                                 @change="(event) => onChange(event, param)"
                             />
                         </div>

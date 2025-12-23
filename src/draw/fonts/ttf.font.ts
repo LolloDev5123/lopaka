@@ -44,4 +44,8 @@ export class TTFFont extends Font {
         ctx.textBaseline = 'alphabetic';
         ctx.fillText(text, position.x, position.y);
     }
+
+    hasChar(code: number): boolean {
+        return true;
+    }
 }

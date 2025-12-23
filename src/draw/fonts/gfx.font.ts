@@ -86,4 +86,7 @@ export class GFXFont extends Font {
         dc.ctx.fill();
         dc.ctx.restore();
     }
+    hasChar(code: number): boolean {
+        return this.fontData.glyphs.has(code);
+    }
 }

@@ -27,6 +27,7 @@ const emit = defineEmits(['change']);
 
 function onClick(font: TPlatformFont) {
     fontsBtn.value.blur();
+    hideFontsMenu();
     logEvent('select_font', font.name);
     emit('change', {
         target: {value: font.name},
@@ -52,6 +53,11 @@ function closeWizard() {
     isWizardVisible.value = false;
     isLoading.value = false;
 }
+const selectedFont = computed(() => {
+    return fontsList.value.find((font) => font.name === props.fontValue);
+});
+
+// ... existing code ...
 </script>
 
 <template>
@@ -78,7 +84,12 @@ function closeWizard() {
         @blur="hideFontsMenu"
     >
         <div class="truncate pointer-events-none w-[128px] text-left flex">
-            {{ fontsList.find((font) => font.name === fontValue)?.title }}
+            <FontListItem 
+                v-if="selectedFont" 
+                :platformFont="selectedFont" 
+                :key="selectedFont.name"
+            />
+            <span v-else>Select Font</span>
         </div>
         <div class="overflow-hidden w-48 right-[100%] -top-2 absolute z-10 rounded-box">
             <ul

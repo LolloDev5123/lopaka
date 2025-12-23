@@ -3,17 +3,37 @@ import {Font} from '/src/draw/fonts/font';
 import {Point} from '/src/core/point';
 
 export function useFontRender() {
-    const renderFontToCanvas = (font: Font, text: string, scale: number = 1): HTMLCanvasElement | null => {
+    const renderFontToCanvas = (font: Font, text: string, inputScale: number = 1): HTMLCanvasElement | null => {
         if (!font) return null;
 
-        // Simplify: GFX fonts are usually small (8-18pt).
-        // 32px height is usually safe for the inline preview.
-        // We will calc width properly though.
-        const size = font.getSize(null as any, text, scale);
+        // Sanitize text: replace missing characters with [?]
+        let safeText = '';
+        for (let i = 0; i < text.length; i++) {
+            const code = text.charCodeAt(i);
+            if (font.hasChar(code)) {
+                safeText += text[i];
+            } else {
+                safeText += '[?]';
+            }
+        }
+
+        // 1. Get raw size at scale 1 to determine height
+        const rawSize = font.getSize(null as any, safeText, 1);
+        if (rawSize.y <= 0) return null;
+
+        const TARGET_HEIGHT = 20; // Target height for the font content
+        const MIN_SCALE = 1;
         
-        // Ensure integer dimensions for canvas (crucial!)
+        // Calculate scale to normalize height (upscale small fonts, keep big ones reasonably sized)
+        let scale = TARGET_HEIGHT / rawSize.y;
+        if (scale < MIN_SCALE) scale = MIN_SCALE; // Don't downscale already readable fonts too much
+        
+        // Re-calculate size with the normalized scale
+        const size = font.getSize(null as any, safeText, scale);
+        
+        // Ensure integer dimensions for clean canvas
         const width = Math.ceil(Math.max(size.x, 10));
-        const height = 32; 
+        const height = 32; // Fixed container height for UI consistency
 
         const canvas = document.createElement('canvas');
         canvas.width = width;
@@ -23,24 +43,15 @@ export function useFontRender() {
         if (!ctx) return null;
 
         ctx.imageSmoothingEnabled = false;
-        
-        // Explicitly fill background to verify canvas presence
-        // ctx.fillStyle = '#222222';
-        // ctx.fillRect(0, 0, width, height);
 
         const dc = new DrawContext(canvas);
         dc.ctx.fillStyle = '#FFFFFF';
 
-        // Draw text.
-        // We will try to center it vertically roughly.
-        // GFX drawing anchor is seemingly bottom-ish.
-        // If we draw at (0, 20) in a 32px canvas, it should appear.
-        // Let's rely on a safe baseline offset (e.g., 24px from top)
-        const baselineY = 24;
+        // Center vertically based on the calculated height
+        const DrawY = Math.floor((height + size.y) / 2) - 2; // -2 for slight visual optical balancing
 
         try {
-            console.log(`[FontRender] Drawing ${font.name} at ${width}x${height}`);
-            font.drawText(dc, text, new Point(0, baselineY), scale);
+            font.drawText(dc, safeText, new Point(0, DrawY), scale);
         } catch(e) {
             console.error('[FontRender] Error drawing text:', e);
             return null;

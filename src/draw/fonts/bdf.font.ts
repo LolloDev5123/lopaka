@@ -78,4 +78,7 @@ export class BDFFont extends Font {
         }
         dc.ctx.fill();
     }
+    hasChar(code: number): boolean {
+        return this.fontData.glyphs.has(code);
+    }
 }
