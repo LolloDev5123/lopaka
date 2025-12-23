@@ -41,6 +41,7 @@ type TSessionState = {
     warnings: string[];
     screens: TSessionScreen[];
     activeScreenId: number;
+    projectName: string;
 };
 
 export type TSessionScreen = {
@@ -83,8 +84,14 @@ export class Session {
         isPublic: false,
         customFonts: [],
         warnings: [],
-        screens: [],
+        screens: [{
+            id: 1,
+            name: 'Screen 1',
+            layers: [],
+            preview: ''
+        }],
         activeScreenId: 1,
+        projectName: 'Untitled Project',
     });
 
     history: ChangeHistory = useHistory();
@@ -509,9 +516,17 @@ export class Session {
      * Export entire project to .lpk format (JSON)
      */
     exportProject = () => {
+        // Save current screen layers before export
+        const currentScreen = this.state.screens.find(s => s.id === this.state.activeScreenId);
+        if (currentScreen) {
+            currentScreen.layers = this.state.layers;
+        }
+        
+        const LPK_VERSION = '1.0';
         const projectData = {
-            version: '1.0',
+            version: LPK_VERSION,
             metadata: {
+                projectName: this.state.projectName,
                 created: new Date().toISOString(),
                 modified: new Date().toISOString(),
                 appVersion: 'lopaka-1.0'
